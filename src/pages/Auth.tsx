@@ -12,6 +12,23 @@ import { ShoppingBag } from 'lucide-react';
 const Auth = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('signin');
+
+  const validatePassword = (password: string): boolean => {
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      return false;
+    }
+    if (!/[A-Z]/.test(password)) {
+      toast.error('Password must contain at least 1 capital letter');
+      return false;
+    }
+    if (!/[0-9]/.test(password)) {
+      toast.error('Password must contain at least 1 number');
+      return false;
+    }
+    return true;
+  };
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -21,6 +38,12 @@ const Auth = () => {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
+
+    // Validate password
+    if (!validatePassword(password)) {
+      setLoading(false);
+      return;
+    }
 
     try {
       await signUp(email, password, fullName);
@@ -74,11 +97,17 @@ const Auth = () => {
 
         <Card className="shadow-2xl border-2 backdrop-blur-sm bg-card/95">
           <CardHeader>
-            <CardTitle className="text-2xl">Welcome Back!</CardTitle>
-            <CardDescription>Sign in to your account or create a new one to get started</CardDescription>
+            <CardTitle className="text-2xl">
+              {activeTab === 'signin' ? 'Welcome Back!' : 'Join FAST BAZAAR'}
+            </CardTitle>
+            <CardDescription>
+              {activeTab === 'signin' 
+                ? 'Sign in to your account to continue' 
+                : 'Create a new account to get started'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs defaultValue="signin" className="w-full" onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 p-1">
                 <TabsTrigger value="signin" className="data-[state=active]:gradient-primary data-[state=active]:text-white">
                   Sign In
@@ -150,9 +179,12 @@ const Auth = () => {
                       type="password"
                       placeholder="••••••••"
                       required
-                      minLength={6}
+                      minLength={8}
                       className="h-11"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Min 8 characters, 1 capital letter, 1 number
+                    </p>
                   </div>
                   <Button type="submit" className="w-full gradient-primary h-11 text-base shadow-lg hover:shadow-xl transition-shadow" disabled={loading}>
                     {loading ? 'Creating account...' : 'Create Account'}
