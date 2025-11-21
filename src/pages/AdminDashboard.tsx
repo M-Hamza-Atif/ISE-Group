@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Shield, Users, Package, ShoppingBag, Heart, 
-  TrendingUp, LogOut, Grid3x3, BarChart3 
+  TrendingUp, LogOut, Grid3x3, BarChart3, Flag, Megaphone 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { signOut } from '@/lib/supabase';
@@ -40,19 +40,13 @@ const AdminDashboard = () => {
         return;
       }
 
-      if (!authLoading && !user) {
-        navigate('/admin/login');
-        return;
-      }
-
-      if (user) {
-        await fetchStats();
-      }
+      // Admin session exists, fetch stats
+      await fetchStats();
       setLoading(false);
     };
 
     verifyAdmin();
-  }, [user, authLoading, navigate]);
+  }, [navigate]);
 
   const fetchStats = async () => {
     try {
@@ -120,14 +114,32 @@ const AdminDashboard = () => {
                 <p className="text-red-100 text-sm">FAST BAZAAR Management</p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={handleSignOut}
-              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/admin/announcements')}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <Megaphone className="mr-2 h-4 w-4" />
+                Announcements
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/admin/moderation')}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <Flag className="mr-2 h-4 w-4" />
+                Moderation
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleSignOut}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </div>

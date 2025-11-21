@@ -12,6 +12,9 @@ import { ShoppingBag } from 'lucide-react';
 const Auth = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('signin');
+
+
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -22,10 +25,17 @@ const Auth = () => {
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
 
+    // Validate university email
+    if (!email.endsWith('@isb.nu.edu.pk')) {
+      toast.error('Please use your university email (@isb.nu.edu.pk)');
+      setLoading(false);
+      return;
+    }
+
     try {
       await signUp(email, password, fullName);
-      toast.success('Account created successfully!');
-      navigate('/');
+      toast.success('Verification email sent! Please check your inbox.');
+      toast.info('Click the link in the email to verify your account.');
     } catch (error: any) {
       toast.error(error.message || 'Failed to sign up');
     } finally {
@@ -74,11 +84,17 @@ const Auth = () => {
 
         <Card className="shadow-2xl border-2 backdrop-blur-sm bg-card/95">
           <CardHeader>
-            <CardTitle className="text-2xl">Welcome Back!</CardTitle>
-            <CardDescription>Sign in to your account or create a new one to get started</CardDescription>
+            <CardTitle className="text-2xl">
+              {activeTab === 'signin' ? 'Welcome Back!' : 'Join FAST BAZAAR'}
+            </CardTitle>
+            <CardDescription>
+              {activeTab === 'signin' 
+                ? 'Sign in to your account to continue' 
+                : 'Create a new account to get started'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs defaultValue="signin" className="w-full" onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 p-1">
                 <TabsTrigger value="signin" className="data-[state=active]:gradient-primary data-[state=active]:text-white">
                   Sign In
@@ -132,15 +148,16 @@ const Auth = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">University Email</Label>
                     <Input
                       id="signup-email"
                       name="email"
                       type="email"
-                      placeholder="you@university.edu"
+                      placeholder="yourname@isb.nu.edu.pk"
                       required
                       className="h-11"
                     />
+                    <p className="text-xs text-muted-foreground">Must be a valid @isb.nu.edu.pk email</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
@@ -150,7 +167,6 @@ const Auth = () => {
                       type="password"
                       placeholder="••••••••"
                       required
-                      minLength={6}
                       className="h-11"
                     />
                   </div>

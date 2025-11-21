@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Upload, X } from 'lucide-react';
 
 interface Category {
   id: string;
@@ -23,6 +23,7 @@ const AddProduct = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -31,6 +32,10 @@ const AddProduct = () => {
     condition: '',
     transaction_type: 'sell',
     images: [] as string[],
+    stock_amount: '1',
+    is_negotiable: false,
+    scheduled_at: '',
+    scheduled_status: '' as 'available' | 'unavailable' | '',
   });
 
   const isEdit = !!id;
@@ -82,6 +87,10 @@ const AddProduct = () => {
       condition: data.condition,
       transaction_type: data.transaction_type,
       images: data.images || [],
+      stock_amount: data.stock_amount?.toString() || '1',
+      is_negotiable: data.is_negotiable || false,
+      scheduled_at: data.scheduled_at || '',
+      scheduled_status: data.scheduled_status || '',
     });
   };
 
@@ -105,6 +114,10 @@ const AddProduct = () => {
         transaction_type: formData.transaction_type,
         images: formData.images,
         seller_id: user.id,
+        stock_amount: parseInt(formData.stock_amount) || 1,
+        is_negotiable: formData.is_negotiable,
+        scheduled_at: formData.scheduled_at || null,
+        scheduled_status: formData.scheduled_status || null,
       };
 
       if (isEdit) {
@@ -136,6 +149,68 @@ const AddProduct = () => {
     const url = prompt('Enter image URL:');
     if (url) {
       setFormData({ ...formData, images: [...formData.images, url] });
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          toast.error(`${file.name} is not an image file`);
+          continue;
+        }
+
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`${file.name} is too large (max 5MB)`);
+          continue;
+        }
+
+        // Create unique filename
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user?.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        // Upload to Supabase storage
+        const { data, error } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (error) {
+          toast.error(`Failed to upload ${file.name}`);
+          continue;
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(data.path);
+
+        uploadedUrls.push(publicUrl);
+      }
+
+      if (uploadedUrls.length > 0) {
+        setFormData({ ...formData, images: [...formData.images, ...uploadedUrls] });
+        toast.success(`${uploadedUrls.length} image(s) uploaded successfully`);
+      }
+    } catch (error) {
+      toast.error('Failed to upload images');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      e.target.value = '';
     }
   };
 
@@ -199,23 +274,87 @@ const AddProduct = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={formData.category_id}
-                    onValueChange={(value) => setFormData({ ...formData, category_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="stock_amount">Stock Amount</Label>
+                  <Input
+                    id="stock_amount"
+                    type="number"
+                    min="1"
+                    placeholder="1"
+                    value={formData.stock_amount}
+                    onChange={(e) => setFormData({ ...formData, stock_amount: e.target.value })}
+                  />
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_negotiable"
+                  checked={formData.is_negotiable}
+                  onChange={(e) => setFormData({ ...formData, is_negotiable: e.target.checked })}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="is_negotiable" className="font-normal cursor-pointer">
+                  Price is negotiable (open to offers)
+                </Label>
+              </div>
+
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Schedule Status Change (Optional)</Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Automatically change listing status at a specific date and time
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="scheduled_at">Schedule Date & Time</Label>
+                    <Input
+                      id="scheduled_at"
+                      type="datetime-local"
+                      value={formData.scheduled_at}
+                      onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
+                      min={new Date().toISOString().slice(0, 16)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="scheduled_status">Change Status To</Label>
+                    <Select
+                      value={formData.scheduled_status}
+                      onValueChange={(value: 'available' | 'unavailable') => 
+                        setFormData({ ...formData, scheduled_status: value })
+                      }
+                      disabled={!formData.scheduled_at}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="available">Available</SelectItem>
+                        <SelectItem value="unavailable">Unavailable</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={formData.category_id}
+                  onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -262,21 +401,47 @@ const AddProduct = () => {
                 <Label>Images</Label>
                 <div className="grid grid-cols-3 gap-2 mb-2">
                   {formData.images.map((img, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group">
+                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group border-2 border-border">
                       <img src={img} alt={`Product ${idx + 1}`} className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(idx)}
-                        className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-sm"
+                        className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        Remove
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   ))}
                 </div>
-                <Button type="button" variant="outline" onClick={handleAddImageUrl}>
-                  Add Image URL
-                </Button>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      id="image-upload"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => document.getElementById('image-upload')?.click()}
+                      disabled={uploading}
+                      className="w-full"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {uploading ? 'Uploading...' : 'Upload Images'}
+                    </Button>
+                  </div>
+                  <Button type="button" variant="outline" onClick={handleAddImageUrl}>
+                    Add URL
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Upload images (max 5MB each) or add image URLs
+                </p>
               </div>
 
               <div className="flex gap-4">

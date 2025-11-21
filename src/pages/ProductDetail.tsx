@@ -6,10 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Heart, Eye, MapPin, Phone, Mail, Trash2, Edit } from 'lucide-react';
+import { ArrowLeft, Heart, Eye, MapPin, Phone, Mail, Trash2, Edit, MessageCircle, Instagram, Facebook, Star, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
+import ReviewDialog from '@/components/ReviewDialog';
+import ReviewsList from '@/components/ReviewsList';
+import ReportDialog from '@/components/ReportDialog';
+import MessagingDrawer from '@/components/MessagingDrawer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,8 +38,20 @@ interface Product {
   status: string;
   seller_id: string;
   created_at: string;
+  is_negotiable: boolean | null;
+  stock_amount: number | null;
   categories: { name: string } | null;
-  profiles: { full_name: string; phone: string | null; location: string | null } | null;
+  profiles: { 
+    full_name: string; 
+    phone: string | null; 
+    location: string | null;
+    whatsapp: string | null;
+    instagram: string | null;
+    facebook: string | null;
+    department: string | null;
+    bio: string | null;
+    is_verified: boolean | null;
+  } | null;
 }
 
 const ProductDetail = () => {
@@ -61,7 +77,7 @@ const ProductDetail = () => {
       .select(`
         *,
         categories(name),
-        profiles(full_name, phone, location)
+        profiles(full_name, phone, location, whatsapp, instagram, facebook, department, bio, is_verified)
       `)
       .eq('id', id)
       .single();
@@ -219,9 +235,21 @@ const ProductDetail = () => {
                 </Button>
               </div>
 
-              <p className="text-5xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent mb-6">
-                ${product.price.toFixed(2)}
-              </p>
+              <div className="mb-6">
+                <p className="text-5xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
+                  ${product.price.toFixed(2)}
+                </p>
+                {product.is_negotiable && (
+                  <p className="text-sm text-green-600 font-medium mt-2 flex items-center gap-1">
+                    💰 Price is negotiable - Open to offers
+                  </p>
+                )}
+                {product.stock_amount && product.stock_amount > 1 && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Stock: {product.stock_amount} available
+                  </p>
+                )}
+              </div>
 
               <div className="flex flex-wrap gap-2 mb-6">
                 <Badge className={`${conditionColors[product.condition]} shadow-md text-base px-3 py-1`}>
@@ -269,22 +297,82 @@ const ProductDetail = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-semibold text-lg">{product.profiles?.full_name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-lg">{product.profiles?.full_name}</p>
+                      {product.profiles?.is_verified && (
+                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">Member since {new Date(product.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</p>
+                    {product.profiles?.department && (
+                      <p className="text-sm text-muted-foreground">📚 {product.profiles.department}</p>
+                    )}
                   </div>
                 </div>
 
-                {product.profiles?.location && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2 bg-muted/20 p-2 rounded">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    {product.profiles.location}
+                {product.profiles?.bio && (
+                  <div className="mb-4 p-3 bg-muted/20 rounded-lg">
+                    <p className="text-sm italic text-muted-foreground">"{product.profiles.bio}"</p>
                   </div>
                 )}
 
-                {product.profiles?.phone && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 p-2 rounded">
-                    <Phone className="h-4 w-4 text-primary" />
-                    {product.profiles.phone}
+                <div className="space-y-2 mb-4">
+                  {product.profiles?.location && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 p-2 rounded">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      {product.profiles.location}
+                    </div>
+                  )}
+
+                  {product.profiles?.phone && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/20 p-2 rounded">
+                      <Phone className="h-4 w-4 text-primary" />
+                      {product.profiles.phone}
+                    </div>
+                  )}
+                </div>
+
+                {(product.profiles?.whatsapp || product.profiles?.instagram || product.profiles?.facebook) && (
+                  <div className="mb-4">
+                    <p className="text-sm font-medium mb-2">Connect with seller:</p>
+                    <div className="flex gap-2">
+                      {product.profiles?.whatsapp && (
+                        <a 
+                          href={`https://wa.me/${product.profiles.whatsapp.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          WhatsApp
+                        </a>
+                      )}
+                      {product.profiles?.instagram && (
+                        <a 
+                          href={`https://instagram.com/${product.profiles.instagram.replace('@', '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-3 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition text-sm"
+                        >
+                          <Instagram className="h-4 w-4" />
+                          Instagram
+                        </a>
+                      )}
+                      {product.profiles?.facebook && (
+                        <a 
+                          href={product.profiles.facebook}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                        >
+                          <Facebook className="h-4 w-4" />
+                          Facebook
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -318,13 +406,53 @@ const ProductDetail = () => {
                     </AlertDialog>
                   </div>
                 ) : (
-                  <Button className="w-full mt-6 gradient-primary shadow-lg hover:shadow-xl transition-shadow h-11" disabled={!user}>
-                    <Mail className="mr-2 h-4 w-4" />
-                    Contact Seller
-                  </Button>
+                  <div className="mt-6 space-y-2">
+                    {user && product && (
+                      <MessagingDrawer
+                        productId={product.id}
+                        productTitle={product.title}
+                        sellerId={product.seller_id}
+                        sellerName={product.profiles?.full_name || 'Seller'}
+                      />
+                    )}
+                    {user && product && (
+                      <div className="flex gap-2">
+                        <ReportDialog
+                          reportableType="product"
+                          reportableId={product.id}
+                          reportedName={product.title}
+                          userId={user.id}
+                        />
+                        <ReportDialog
+                          reportableType="user"
+                          reportableId={product.seller_id}
+                          reportedName={product.profiles?.full_name || 'this seller'}
+                          userId={user.id}
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>
+          </div>
+
+          {/* Reviews Section */}
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Star className="h-6 w-6 text-yellow-400" />
+                Seller Reviews
+              </h2>
+              {user && !isOwner && product && (
+                <ReviewDialog 
+                  sellerId={product.seller_id}
+                  sellerName={product.profiles?.full_name || 'this seller'}
+                  userId={user.id}
+                />
+              )}
+            </div>
+            {product && <ReviewsList sellerId={product.seller_id} />}
           </div>
         </div>
       </div>

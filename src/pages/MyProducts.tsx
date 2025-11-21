@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Eye, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, CheckCircle, XCircle, Copy, Ban, Clock, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -19,6 +19,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Product {
   id: string;
@@ -69,7 +77,7 @@ const MyProducts = () => {
     setLoading(false);
   };
 
-  const handleStatusChange = async (productId: string, newStatus: 'available' | 'sold') => {
+  const handleStatusChange = async (productId: string, newStatus: 'available' | 'unavailable' | 'reserved' | 'sold') => {
     const { error } = await supabase
       .from('products')
       .update({ status: newStatus })
@@ -79,6 +87,30 @@ const MyProducts = () => {
       toast.error('Failed to update status');
     } else {
       toast.success(`Listing marked as ${newStatus}`);
+      fetchMyProducts();
+    }
+  };
+
+  const handleDuplicate = async (product: Product) => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('products')
+      .insert([{
+        title: `Copy - ${product.title}`,
+        description: product.description,
+        price: product.price,
+        category_id: product.categories ? product.id : null,
+        condition: product.condition,
+        transaction_type: product.transaction_type,
+        images: product.images,
+        seller_id: user.id,
+      }]);
+
+    if (error) {
+      toast.error('Failed to duplicate listing');
+    } else {
+      toast.success('Listing duplicated successfully');
       fetchMyProducts();
     }
   };
@@ -161,7 +193,6 @@ const MyProducts = () => {
                           size="sm" 
                           variant="outline" 
                           onClick={() => navigate(`/products/${product.id}`)}
-                          className="flex-1"
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           View
@@ -170,25 +201,46 @@ const MyProducts = () => {
                           size="sm" 
                           variant="outline" 
                           onClick={() => navigate(`/products/${product.id}/edit`)}
-                          className="flex-1"
                         >
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
                         <Button 
                           size="sm" 
-                          variant="default"
-                          onClick={() => handleStatusChange(product.id, 'sold')}
-                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          variant="outline"
+                          onClick={() => handleDuplicate(product)}
                         >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Mark Sold
+                          <Copy className="h-4 w-4 mr-1" />
+                          Duplicate
                         </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="default">
+                              <MoreVertical className="h-4 w-4 mr-1" />
+                              Status
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleStatusChange(product.id, 'unavailable')}>
+                              <Ban className="h-4 w-4 mr-2" />
+                              Mark Unavailable
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(product.id, 'reserved')}>
+                              <Clock className="h-4 w-4 mr-2" />
+                              Mark Reserved
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(product.id, 'sold')}>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Mark Sold
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button 
                           size="sm" 
                           variant="destructive" 
                           onClick={() => setDeleteId(product.id)}
-                          className="flex-1"
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Delete
@@ -234,16 +286,23 @@ const MyProducts = () => {
                           size="sm" 
                           variant="outline" 
                           onClick={() => navigate(`/products/${product.id}`)}
-                          className="flex-1"
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           View
                         </Button>
                         <Button 
                           size="sm" 
+                          variant="outline"
+                          onClick={() => handleDuplicate(product)}
+                        >
+                          <Copy className="h-4 w-4 mr-1" />
+                          Duplicate
+                        </Button>
+                        <Button 
+                          size="sm" 
                           variant="default"
                           onClick={() => handleStatusChange(product.id, 'available')}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          className="bg-blue-600 hover:bg-blue-700"
                         >
                           <XCircle className="h-4 w-4 mr-1" />
                           Mark Active
@@ -252,7 +311,6 @@ const MyProducts = () => {
                           size="sm" 
                           variant="destructive" 
                           onClick={() => setDeleteId(product.id)}
-                          className="flex-1"
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Delete

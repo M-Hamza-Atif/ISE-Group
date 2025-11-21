@@ -16,18 +16,8 @@ export const signUp = async (email: string, password: string, fullName: string) 
   
   if (error) throw error;
   
-  if (data.user) {
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert([
-        {
-          id: data.user.id,
-          full_name: fullName,
-        },
-      ]);
-    
-    if (profileError) throw profileError;
-  }
+  // Profile will be automatically created by database trigger
+  // No need to manually insert into profiles table
   
   return data;
 };

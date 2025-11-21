@@ -14,56 +14,8 @@ export const adminSignIn = async (username: string, password: string) => {
   // Store admin session in localStorage
   localStorage.setItem(ADMIN_SESSION_KEY, "true");
   
-  // Create a special admin session
-  // First, try to sign in with a pre-created admin email
-  const adminEmail = "admin@campusmarketplace.internal";
-  
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: adminEmail,
-      password: ADMIN_PASSWORD,
-    });
-    
-    if (error) {
-      // If admin doesn't exist, create it
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: adminEmail,
-        password: ADMIN_PASSWORD,
-        options: {
-          data: {
-            full_name: "System Administrator",
-          },
-        },
-      });
-      
-      if (signUpError) throw signUpError;
-      
-      // Create admin profile
-      if (signUpData.user) {
-        await supabase.from('profiles').insert([
-          {
-            id: signUpData.user.id,
-            full_name: "System Administrator",
-            is_admin: true,
-          },
-        ]);
-      }
-      
-      // Sign in again
-      const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
-        email: adminEmail,
-        password: ADMIN_PASSWORD,
-      });
-      
-      if (retryError) throw retryError;
-      return retryData;
-    }
-    
-    return data;
-  } catch (error) {
-    localStorage.removeItem(ADMIN_SESSION_KEY);
-    throw error;
-  }
+  // Admin doesn't need Supabase auth, just use local session
+  return { success: true };
 };
 
 export const isAdminSession = (): boolean => {

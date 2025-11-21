@@ -3,10 +3,12 @@ import { supabase } from '@/integrations/supabase/client';
 import ProductCard from '@/components/ProductCard';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
+import AnnouncementBanner from '@/components/AnnouncementBanner';
 import { useScrollAnimation } from '@/hooks/use-scroll-animation';
 
 interface Category {
@@ -33,6 +35,7 @@ const Products = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedCondition, setSelectedCondition] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
 
   useScrollAnimation();
 
@@ -74,14 +77,16 @@ const Products = () => {
     const matchesType = selectedType === 'all' || product.transaction_type === selectedType || 
                         (selectedType === 'sell' && product.transaction_type === 'both') ||
                         (selectedType === 'exchange' && product.transaction_type === 'both');
+    const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
     
-    return matchesSearch && matchesCategory && matchesCondition && matchesType;
+    return matchesSearch && matchesCategory && matchesCondition && matchesType && matchesPrice;
   });
 
   const clearFilters = () => {
     setSelectedCategory('all');
     setSelectedCondition('all');
     setSelectedType('all');
+    setPriceRange([0, 1000]);
     setSearchTerm('');
   };
 
@@ -92,6 +97,11 @@ const Products = () => {
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
+        {/* Announcements */}
+        <div className="mb-6">
+          <AnnouncementBanner />
+        </div>
+
         {/* Hero Section */}
         <div className="mb-12 text-center scroll-reveal">
           <h1 className="text-5xl font-bold mb-6 pb-2 relative" style={{ lineHeight: '1.5' }}>
@@ -176,7 +186,26 @@ const Products = () => {
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-medium">Price Range</label>
+              <span className="text-sm text-muted-foreground">
+                ${priceRange[0]} - ${priceRange[1]}
+              </span>
+            </div>
+            <Slider
+              value={priceRange}
+              onValueChange={(value) => setPriceRange(value as [number, number])}
+              max={1000}
+              min={0}
+              step={10}
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex justify-end">
             {activeFiltersCount > 0 && (
               <Button variant="outline" onClick={clearFilters} className="hover:bg-destructive/10 hover:text-destructive">
                 <SlidersHorizontal className="mr-2 h-4 w-4" />

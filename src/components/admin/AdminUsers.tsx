@@ -52,13 +52,18 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Get all profiles
+      // Get all profiles - select only columns that definitely exist
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, phone, location, created_at')
         .order('created_at', { ascending: false });
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        throw profileError;
+      }
+
+      console.log('Fetched profiles:', profiles);
 
       // Get product counts
       const { data: productCounts } = await supabase
@@ -70,10 +75,12 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
         countsMap[p.seller_id] = (countsMap[p.seller_id] || 0) + 1;
       });
 
-      // Get emails from auth.users (requires admin access)
+      // Map profiles with product counts and default is_admin to false
       const usersWithCounts = profiles?.map(p => ({
         ...p,
         product_count: countsMap[p.id] || 0,
+        is_admin: false, // Default to false since column might not exist yet
+        email: undefined,
       })) || [];
 
       setUsers(usersWithCounts);

@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ShoppingBag, Plus, User, LogOut, Heart, Package, Shield, Moon, Sun } from 'lucide-react';
+import { ShoppingBag, Plus, User, LogOut, Heart, Package, Shield, Moon, Sun, Search, DollarSign, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { signOut } from '@/lib/supabase';
@@ -80,6 +80,24 @@ const Navbar = () => {
                     <Link to="/favorites" className="cursor-pointer">
                       <Heart className="mr-2 h-4 w-4" />
                       Favorites
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/requests" className="cursor-pointer">
+                      <Search className="mr-2 h-4 w-4" />
+                      Item Requests
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/transactions" className="cursor-pointer">
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Transactions
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/analytics" className="cursor-pointer">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      Analytics
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
