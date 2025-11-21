@@ -14,8 +14,6 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('signin');
 
-
-
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -169,6 +167,9 @@ const Auth = () => {
                       required
                       className="h-11"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Min 8 characters, 1 capital letter, 1 number
+                    </p>
                   </div>
                   <Button type="submit" className="w-full gradient-primary h-11 text-base shadow-lg hover:shadow-xl transition-shadow" disabled={loading}>
                     {loading ? 'Creating account...' : 'Create Account'}
