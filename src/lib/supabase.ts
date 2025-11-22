@@ -16,6 +16,11 @@ export const signUp = async (email: string, password: string, fullName: string) 
   
   if (error) throw error;
   
+  // Check if user already exists (Supabase returns a user object but with identities empty array)
+  if (data.user && data.user.identities && data.user.identities.length === 0) {
+    throw new Error('An account with this email already exists');
+  }
+  
   // Profile will be automatically created by database trigger
   // No need to manually insert into profiles table
   
