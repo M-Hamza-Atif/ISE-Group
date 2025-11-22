@@ -21,15 +21,31 @@ interface MessagingDrawerProps {
   productTitle: string;
   sellerId: string;
   sellerName: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-const MessagingDrawer = ({ productId, productTitle, sellerId, sellerName }: MessagingDrawerProps) => {
+const MessagingDrawer = ({ productId, productTitle, sellerId, sellerName, open: externalOpen, onOpenChange }: MessagingDrawerProps) => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Sync external open state with internal
+  useEffect(() => {
+    if (externalOpen !== undefined) {
+      setOpen(externalOpen);
+    }
+  }, [externalOpen]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (onOpenChange) {
+      onOpenChange(newOpen);
+    }
+  };
 
   useEffect(() => {
     if (open && user) {
@@ -49,10 +65,10 @@ const MessagingDrawer = ({ productId, productTitle, sellerId, sellerName }: Mess
       .from('messages')
       .select(`
         *,
-        sender:profiles!sender_id(full_name)
+        sender:profiles!messages_sender_id_fkey(full_name)
       `)
       .eq('product_id', productId)
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${sellerId}),and(sender_id.eq.${sellerId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
     if (!error && data) {
@@ -64,7 +80,7 @@ const MessagingDrawer = ({ productId, productTitle, sellerId, sellerName }: Mess
     if (!user) return;
 
     const subscription = supabase
-      .channel(`messages:${productId}`)
+      .channel(`messages:${productId}:${user.id}:${sellerId}`)
       .on(
         'postgres_changes',
         {
@@ -73,8 +89,13 @@ const MessagingDrawer = ({ productId, productTitle, sellerId, sellerName }: Mess
           table: 'messages',
           filter: `product_id=eq.${productId}`,
         },
-        () => {
-          fetchMessages();
+        (payload) => {
+          // Only fetch if this message involves the current user
+          const newMessage = payload.new as any;
+          if (newMessage.sender_id === user.id || newMessage.receiver_id === user.id || 
+              newMessage.sender_id === sellerId || newMessage.receiver_id === sellerId) {
+            fetchMessages();
+          }
         }
       )
       .subscribe();
@@ -89,17 +110,28 @@ const MessagingDrawer = ({ productId, productTitle, sellerId, sellerName }: Mess
 
     setLoading(true);
 
-    const { error } = await supabase
+    console.log('Sending message:', {
+      product_id: productId,
+      sender_id: user.id,
+      receiver_id: sellerId,
+      content: newMessage.trim(),
+    });
+
+    const { data, error } = await supabase
       .from('messages')
       .insert({
         product_id: productId,
         sender_id: user.id,
         receiver_id: sellerId,
         content: newMessage.trim(),
-      });
+      })
+      .select();
+
+    console.log('Message send result:', { data, error });
 
     if (error) {
-      toast.error('Failed to send message');
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message: ' + error.message);
     } else {
       setNewMessage('');
       fetchMessages();
@@ -125,22 +157,21 @@ const MessagingDrawer = ({ productId, productTitle, sellerId, sellerName }: Mess
     return null;
   }
 
-  // Don't show messaging button if user is the seller
-  if (user.id === sellerId) {
-    return null;
-  }
-
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="outline" className="w-full">
-          <MessageCircle className="mr-2 h-4 w-4" />
-          Message Seller
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      {!open && (
+        <SheetTrigger asChild>
+          <Button variant="outline" className="w-full">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Message Seller
+          </Button>
+        </SheetTrigger>
+      )}
       <SheetContent className="w-full sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Message {sellerName}</SheetTitle>
+          <SheetTitle>
+            {user.id === sellerId ? 'Messages' : `Message ${sellerName}`}
+          </SheetTitle>
           <SheetDescription className="line-clamp-1">
             About: {productTitle}
           </SheetDescription>

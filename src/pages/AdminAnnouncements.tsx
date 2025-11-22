@@ -61,21 +61,41 @@ const AdminAnnouncements = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const { error } = await supabase
+    const { data: announcement, error } = await supabase
       .from('announcements')
       .insert({
         title: formData.title,
         content: formData.content,
         type: formData.type,
         is_active: true,
-      });
+      })
+      .select()
+      .single();
 
     if (error) {
       toast.error('Failed to create announcement');
       return;
     }
 
-    toast.success('Announcement created');
+    // Create notifications for all users
+    const { data: users } = await supabase
+      .from('profiles')
+      .select('id');
+
+    if (users && users.length > 0) {
+      const notifications = users.map(user => ({
+        user_id: user.id,
+        title: formData.title,
+        message: formData.content,
+        type: 'announcement',
+        link: null,
+        is_read: false,
+      }));
+
+      await supabase.from('notifications').insert(notifications);
+    }
+
+    toast.success('Announcement created and notifications sent');
     setFormData({ title: '', content: '', type: 'info' });
     setShowForm(false);
     fetchAnnouncements();

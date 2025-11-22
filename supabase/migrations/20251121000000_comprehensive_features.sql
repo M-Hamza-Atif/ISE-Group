@@ -311,12 +311,9 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   content TEXT NOT NULL,
-  type TEXT CHECK (type IN ('maintenance', 'event', 'update', 'general')) DEFAULT 'general',
-  priority TEXT CHECK (priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+  type TEXT CHECK (type IN ('info', 'warning', 'success', 'error')) DEFAULT 'info',
   is_active BOOLEAN DEFAULT true,
-  created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  expires_at TIMESTAMP WITH TIME ZONE
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
@@ -324,17 +321,13 @@ ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Active announcements viewable by everyone" ON public.announcements;
 CREATE POLICY "Active announcements viewable by everyone"
   ON public.announcements FOR SELECT
-  USING (is_active = true AND (expires_at IS NULL OR expires_at > now()));
+  USING (is_active = true);
 
-DROP POLICY IF EXISTS "Admins can manage announcements" ON public.announcements;
-CREATE POLICY "Admins can manage announcements"
+DROP POLICY IF EXISTS "Anyone can manage announcements" ON public.announcements;
+CREATE POLICY "Anyone can manage announcements"
   ON public.announcements FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND (is_admin = true OR role = 'admin')
-    )
-  );
+  USING (true)
+  WITH CHECK (true);
 
 -- ========================================
 -- 10. CREATE NOTIFICATIONS TABLE

@@ -30,6 +30,25 @@ const Auth = () => {
       return;
     }
 
+    // Validate password
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
+      setLoading(false);
+      return;
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      toast.error('Password must contain at least 1 capital letter');
+      setLoading(false);
+      return;
+    }
+
+    if (!/[0-9]/.test(password)) {
+      toast.error('Password must contain at least 1 number');
+      setLoading(false);
+      return;
+    }
+
     try {
       await signUp(email, password, fullName);
       toast.success('Verification email sent! Please check your inbox.');
@@ -165,6 +184,7 @@ const Auth = () => {
                       type="password"
                       placeholder="••••••••"
                       required
+                      minLength={8}
                       className="h-11"
                     />
                     <p className="text-xs text-muted-foreground">

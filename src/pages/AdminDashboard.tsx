@@ -133,6 +133,14 @@ const AdminDashboard = () => {
               </Button>
               <Button 
                 variant="outline" 
+                onClick={() => navigate('/admin/appeals')}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <Shield className="mr-2 h-4 w-4" />
+                Appeals
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={handleSignOut}
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
               >

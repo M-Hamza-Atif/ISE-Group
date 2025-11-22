@@ -59,17 +59,17 @@ const AnnouncementBanner = () => {
   return (
     <div className="space-y-4">
       {visibleAnnouncements.map((announcement) => (
-        <Alert key={announcement.id} variant={getAlertVariant(announcement.type)} className="relative pr-12">
+        <Alert key={announcement.id} variant={getAlertVariant(announcement.type)} className="relative pr-14">
           <Megaphone className="h-4 w-4" />
           <AlertTitle>{announcement.title}</AlertTitle>
           <AlertDescription>{announcement.content}</AlertDescription>
           <Button
             variant="ghost"
             size="sm"
-            className="absolute top-2 right-2 h-6 w-6 p-0"
+            className="absolute top-3 right-2 h-8 w-8 p-0 hover:bg-background/80 rounded-full border border-border flex items-center justify-center"
             onClick={() => handleDismiss(announcement.id)}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4 text-foreground" />
           </Button>
         </Alert>
       ))}

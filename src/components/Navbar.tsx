@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,16 +8,63 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ShoppingBag, Plus, User, LogOut, Heart, Package, Shield, Moon, Sun, Search, DollarSign, BarChart3 } from 'lucide-react';
+import { ShoppingBag, Plus, User, LogOut, Heart, Package, Shield, Moon, Sun, Search, DollarSign, BarChart3, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { signOut } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import NotificationsDropdown from '@/components/NotificationsDropdown';
 
 const Navbar = () => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCount();
+      subscribeToMessages();
+    }
+  }, [user]);
+
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    
+    // Get all messages where user is receiver and hasn't read yet
+    // For simplicity, count all messages where user is receiver
+    const { count } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', user.id);
+    
+    setUnreadCount(count || 0);
+  };
+
+  const subscribeToMessages = () => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('navbar-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        () => {
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const handleSignOut = async () => {
     try {
@@ -56,6 +104,8 @@ const Navbar = () => {
 
           {user ? (
             <>
+              <NotificationsDropdown />
+              
               <Button asChild className="gradient-primary shadow-md hover:shadow-xl transition-all shine hover-lift">
                 <Link to="/products/new">
                   <Plus className="mr-2 h-4 w-4" />
@@ -86,6 +136,17 @@ const Navbar = () => {
                     <Link to="/requests" className="cursor-pointer">
                       <Search className="mr-2 h-4 w-4" />
                       Item Requests
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/messages" className="cursor-pointer">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Messages
+                      {unreadCount > 0 && (
+                        <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

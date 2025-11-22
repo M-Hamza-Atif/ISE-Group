@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
-import AnnouncementBanner from '@/components/AnnouncementBanner';
+import HomeAnnouncementBanner from '@/components/HomeAnnouncementBanner';
 import { useScrollAnimation } from '@/hooks/use-scroll-animation';
 
 interface Category {
@@ -25,6 +25,7 @@ interface Product {
   transaction_type: string;
   views: number;
   categories: Category | null;
+  profiles: { location: string | null } | null;
 }
 
 const Products = () => {
@@ -35,7 +36,10 @@ const Products = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedCondition, setSelectedCondition] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
+  const [maxPrice, setMaxPrice] = useState(1000);
+  const [locations, setLocations] = useState<string[]>([]);
 
   useScrollAnimation();
 
@@ -55,7 +59,8 @@ const Products = () => {
       .from('products')
       .select(`
         *,
-        categories(id, name)
+        categories(id, name),
+        profiles!seller_id(location)
       `)
       .eq('status', 'available')
       .order('created_at', { ascending: false });
@@ -66,6 +71,21 @@ const Products = () => {
       console.error('Error fetching products:', error);
     } else if (data) {
       setProducts(data);
+      
+      // Calculate max price from products
+      const prices = data.map(p => p.price);
+      const calculatedMax = prices.length > 0 ? Math.max(...prices) : 1000;
+      const roundedMax = Math.ceil(calculatedMax / 100) * 100; // Round up to nearest 100
+      setMaxPrice(roundedMax);
+      setPriceRange([0, roundedMax]);
+      
+      // Extract unique locations
+      const uniqueLocations = [...new Set(
+        data
+          .map(p => p.profiles?.location)
+          .filter((loc): loc is string => Boolean(loc))
+      )];
+      setLocations(uniqueLocations);
     }
     setLoading(false);
   };
@@ -78,29 +98,29 @@ const Products = () => {
                         (selectedType === 'sell' && product.transaction_type === 'both') ||
                         (selectedType === 'exchange' && product.transaction_type === 'both');
     const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
+    const matchesLocation = selectedLocation === 'all' || product.profiles?.location === selectedLocation;
     
-    return matchesSearch && matchesCategory && matchesCondition && matchesType && matchesPrice;
+    return matchesSearch && matchesCategory && matchesCondition && matchesType && matchesPrice && matchesLocation;
   });
 
   const clearFilters = () => {
     setSelectedCategory('all');
     setSelectedCondition('all');
     setSelectedType('all');
-    setPriceRange([0, 1000]);
+    setSelectedLocation('all');
+    setPriceRange([0, maxPrice]);
     setSearchTerm('');
   };
 
-  const activeFiltersCount = [selectedCategory, selectedCondition, selectedType].filter(f => f !== 'all').length;
+  const activeFiltersCount = [selectedCategory, selectedCondition, selectedType, selectedLocation].filter(f => f !== 'all').length;
 
   return (
     <div className="min-h-screen gradient-bg">
       <Navbar />
       
       <div className="container mx-auto px-4 py-8">
-        {/* Announcements */}
-        <div className="mb-6">
-          <AnnouncementBanner />
-        </div>
+        {/* Announcement Banner */}
+        <HomeAnnouncementBanner />
 
         {/* Hero Section */}
         <div className="mb-12 text-center scroll-reveal">
@@ -186,19 +206,64 @@ const Products = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations.map((location) => (
+                    <SelectItem key={location} value={location}>
+                      {location}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <label className="text-sm font-medium">Price Range</label>
-              <span className="text-sm text-muted-foreground">
-                ${priceRange[0]} - ${priceRange[1]}
-              </span>
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Price Range</label>
+            <div className="flex gap-2 items-center">
+              <div className="flex-1">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    value={priceRange[0]}
+                    onChange={(e) => {
+                      const val = Math.max(0, Math.min(Number(e.target.value), priceRange[1]));
+                      setPriceRange([val, priceRange[1]]);
+                    }}
+                    className="pl-7"
+                    placeholder="Min"
+                  />
+                </div>
+              </div>
+              <span className="text-muted-foreground">-</span>
+              <div className="flex-1">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    value={priceRange[1]}
+                    onChange={(e) => {
+                      const val = Math.max(priceRange[0], Number(e.target.value));
+                      setPriceRange([priceRange[0], val]);
+                      if (val > maxPrice) setMaxPrice(val);
+                    }}
+                    className="pl-7"
+                    placeholder="Max"
+                  />
+                </div>
+              </div>
             </div>
             <Slider
               value={priceRange}
               onValueChange={(value) => setPriceRange(value as [number, number])}
-              max={1000}
+              max={maxPrice}
               min={0}
               step={10}
               className="w-full"

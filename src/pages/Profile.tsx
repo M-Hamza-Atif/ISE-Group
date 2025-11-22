@@ -8,14 +8,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { User, Shield, CheckCircle2, Clock } from 'lucide-react';
+import { User, Shield, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import AppealDialog from '@/components/AppealDialog';
 
 const Profile = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [isSuspended, setIsSuspended] = useState(false);
+  const [suspensionReason, setSuspensionReason] = useState('');
+  const [suspendedUntil, setSuspendedUntil] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     phone: '',
@@ -59,6 +64,9 @@ const Profile = () => {
         facebook: data.facebook || '',
       });
       setIsVerified(data.is_verified || false);
+      setIsSuspended(data.is_suspended || false);
+      setSuspensionReason(data.suspension_reason || '');
+      setSuspendedUntil(data.suspended_until || null);
     }
   };
 
@@ -128,6 +136,22 @@ const Profile = () => {
           <h1 className="text-4xl font-bold mb-2">Profile</h1>
           <p className="text-muted-foreground">Manage your account information</p>
         </div>
+
+        {isSuspended && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-5 w-5" />
+            <AlertTitle>Account Suspended</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <p><strong>Reason:</strong> {suspensionReason || 'Violation of platform policies'}</p>
+              {suspendedUntil && (
+                <p><strong>Suspended until:</strong> {new Date(suspendedUntil).toLocaleDateString()}</p>
+              )}
+              <div className="mt-3">
+                <AppealDialog userId={user?.id || ''} userName={formData.full_name} />
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {isVerified ? (
           <Card className="mb-6 border-green-500 bg-green-50 dark:bg-green-950">

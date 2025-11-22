@@ -13,12 +13,14 @@ import MyProducts from "./pages/MyProducts";
 import Favorites from "./pages/Favorites";
 import Profile from "./pages/Profile";
 import Requests from "./pages/Requests";
+import Messages from "./pages/Messages";
 import TransactionHistory from "./pages/TransactionHistory";
 import Analytics from "./pages/Analytics";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminModeration from "./pages/AdminModeration";
 import AdminAnnouncements from "./pages/AdminAnnouncements";
+import AdminAppeals from "./pages/AdminAppeals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,12 +43,14 @@ const App = () => (
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/requests" element={<Requests />} />
+              <Route path="/messages" element={<Messages />} />
               <Route path="/transactions" element={<TransactionHistory />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/moderation" element={<AdminModeration />} />
               <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+              <Route path="/admin/appeals" element={<AdminAppeals />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

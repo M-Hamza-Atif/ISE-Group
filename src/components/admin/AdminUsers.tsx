@@ -94,19 +94,19 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
+      // Call the database function to delete user and all their data
+      const { error } = await supabase.rpc('delete_user_and_data', {
+        user_id_to_delete: userId
+      });
 
       if (error) throw error;
 
-      toast.success('User deleted successfully');
+      toast.success('User and all their data deleted successfully');
       fetchUsers();
       onUpdate();
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast.error('Failed to delete user');
+      toast.error('Failed to delete user. Please try again.');
     }
   };
 

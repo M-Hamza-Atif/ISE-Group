@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Plus, Search, DollarSign, Calendar } from 'lucide-react';
+import { Plus, Search, DollarSign, Calendar, MessageSquare, Inbox } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Category {
   id: string;
@@ -31,13 +32,29 @@ interface RequestPost {
   profiles: { full_name: string } | null;
 }
 
+interface RequestResponse {
+  id: string;
+  message: string;
+  created_at: string;
+  responder: { full_name: string };
+}
+
+interface MyRequest extends RequestPost {
+  responses?: RequestResponse[];
+}
+
 const Requests = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [requests, setRequests] = useState<RequestPost[]>([]);
+  const [myRequests, setMyRequests] = useState<MyRequest[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [responseDialogOpen, setResponseDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<RequestPost | null>(null);
+  const [responseMessage, setResponseMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -49,7 +66,11 @@ const Requests = () => {
   useEffect(() => {
     fetchCategories();
     fetchRequests();
-  }, []);
+    if (user) {
+      fetchMyRequests();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('*');
@@ -72,6 +93,39 @@ const Requests = () => {
       setRequests(data);
     }
     setLoading(false);
+  };
+
+  const fetchMyRequests = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('request_posts')
+      .select(`
+        *,
+        categories(id, name),
+        profiles(full_name)
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      // Fetch responses for each request
+      const requestsWithResponses = await Promise.all(
+        data.map(async (req) => {
+          const { data: responses } = await supabase
+            .from('request_responses')
+            .select(`
+              *,
+              responder:profiles!responder_id(full_name)
+            `)
+            .eq('request_id', req.id)
+            .order('created_at', { ascending: false });
+          
+          return { ...req, responses: responses || [] };
+        })
+      );
+      setMyRequests(requestsWithResponses as MyRequest[]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,8 +155,38 @@ const Requests = () => {
       setDialogOpen(false);
       setFormData({ title: '', description: '', budget_min: '', budget_max: '', category_id: '' });
       fetchRequests();
+      if (user) fetchMyRequests();
+      setActiveTab('my-requests');
     } catch (error: any) {
       toast.error(error.message || 'Failed to post request');
+    }
+  };
+
+  const handleRespond = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user || !selectedRequest) {
+      toast.error('Please sign in to respond');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('request_responses')
+        .insert([{
+          request_id: selectedRequest.id,
+          responder_id: user.id,
+          message: responseMessage,
+        }]);
+
+      if (error) throw error;
+
+      toast.success('Response sent successfully!');
+      setResponseDialogOpen(false);
+      setResponseMessage('');
+      setSelectedRequest(null);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send response');
     }
   };
 
@@ -210,13 +294,26 @@ const Requests = () => {
           </Dialog>
         </div>
 
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-48 bg-muted/50 animate-pulse rounded-xl" />
-            ))}
-          </div>
-        ) : requests.length > 0 ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+            <TabsTrigger value="all">
+              <Search className="mr-2 h-4 w-4" />
+              Browse Requests
+            </TabsTrigger>
+            <TabsTrigger value="my-requests">
+              <Inbox className="mr-2 h-4 w-4" />
+              My Requests
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all">
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="h-48 bg-muted/50 animate-pulse rounded-xl" />
+                ))}
+              </div>
+            ) : requests.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {requests.map((request) => (
               <Card key={request.id} className="glass-card hover-lift">
@@ -255,9 +352,47 @@ const Requests = () => {
                   </div>
                   
                   {user && (
-                    <Button className="w-full mt-4" variant="outline">
-                      Respond to Request
-                    </Button>
+                    <Dialog open={responseDialogOpen && selectedRequest?.id === request.id} onOpenChange={(open) => {
+                      setResponseDialogOpen(open);
+                      if (!open) {
+                        setSelectedRequest(null);
+                        setResponseMessage('');
+                      }
+                    }}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          className="w-full mt-4" 
+                          variant="outline"
+                          onClick={() => setSelectedRequest(request)}
+                        >
+                          Respond to Request
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Respond to: {request.title}</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleRespond} className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="response">Your Response *</Label>
+                            <Textarea
+                              id="response"
+                              placeholder="Describe what you can offer..."
+                              value={responseMessage}
+                              onChange={(e) => setResponseMessage(e.target.value)}
+                              rows={4}
+                              required
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button type="submit" className="flex-1">Send Response</Button>
+                            <Button type="button" variant="outline" onClick={() => setResponseDialogOpen(false)}>
+                              Cancel
+                            </Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
                   )}
                 </CardContent>
               </Card>
@@ -274,6 +409,93 @@ const Requests = () => {
             </Button>
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="my-requests">
+            {!user ? (
+              <div className="text-center py-20">
+                <p className="text-xl font-semibold mb-2">Sign in to view your requests</p>
+                <Button onClick={() => navigate('/auth')} className="gradient-primary">
+                  Sign In
+                </Button>
+              </div>
+            ) : myRequests.length > 0 ? (
+              <div className="space-y-6">
+                {myRequests.map((request) => (
+                  <Card key={request.id} className="glass-card">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-xl">{request.title}</CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Posted {new Date(request.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Badge 
+                          variant={request.status === 'open' ? 'default' : 'secondary'}
+                          className={request.status === 'open' ? 'bg-green-600' : ''}
+                        >
+                          {request.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-muted-foreground">{request.description}</p>
+                      
+                      {(request.budget_min || request.budget_max) && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <DollarSign className="h-4 w-4 text-primary" />
+                          <span>
+                            Budget: ${request.budget_min || 0} - ${request.budget_max || '∞'}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="border-t pt-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <MessageSquare className="h-5 w-5 text-primary" />
+                          <h4 className="font-semibold">
+                            Responses ({request.responses?.length || 0})
+                          </h4>
+                        </div>
+                        
+                        {request.responses && request.responses.length > 0 ? (
+                          <div className="space-y-3">
+                            {request.responses.map((response) => (
+                              <div key={response.id} className="bg-muted/50 rounded-lg p-3">
+                                <div className="flex items-start justify-between mb-2">
+                                  <p className="font-medium text-sm">
+                                    {response.responder?.full_name}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(response.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <p className="text-sm">{response.message}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No responses yet</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20">
+                <Inbox className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-xl font-semibold mb-2">No requests yet</p>
+                <p className="text-muted-foreground mb-4">Create your first request!</p>
+                <Button onClick={() => setDialogOpen(true)} className="gradient-primary">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Post a Request
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
