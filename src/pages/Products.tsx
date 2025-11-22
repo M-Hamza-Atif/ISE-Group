@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import Navbar from '@/components/Navbar';
 import HomeAnnouncementBanner from '@/components/HomeAnnouncementBanner';
 import { useScrollAnimation } from '@/hooks/use-scroll-animation';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Category {
   id: string;
@@ -29,6 +30,7 @@ interface Product {
 }
 
 const Products = () => {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,7 +126,7 @@ const Products = () => {
 
         {/* Hero Section */}
         <div className="mb-12 text-center scroll-reveal">
-          <h1 className="text-5xl font-bold mb-6 pb-2 relative" style={{ lineHeight: '1.5' }}>
+          <h1 className="text-5xl font-bold mb-6 pb-2 relative" style={{ lineHeight: '1.5', unicodeBidi: 'normal', direction: 'ltr' }}>
             {"FAST BAZAAR".split("").map((char, index) => (
               char === " " ? (
                 <span key={index} className="letter-space"></span>
@@ -154,7 +156,7 @@ const Products = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
             <Input
-              placeholder="Search for books, electronics, furniture..."
+              placeholder={t('products.search')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-11 h-12 text-lg border-2 focus:border-primary transition-colors"
@@ -165,10 +167,10 @@ const Products = () => {
             <div className="flex-1 min-w-[200px]">
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Category" />
+                  <SelectValue placeholder={t('products.category')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="all">{t('products.allCategories')}</SelectItem>
                   {categories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
                       {cat.name}
@@ -181,15 +183,15 @@ const Products = () => {
             <div className="flex-1 min-w-[200px]">
               <Select value={selectedCondition} onValueChange={setSelectedCondition}>
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Condition" />
+                  <SelectValue placeholder={t('products.condition')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Conditions</SelectItem>
-                  <SelectItem value="new">New</SelectItem>
-                  <SelectItem value="like-new">Like New</SelectItem>
-                  <SelectItem value="good">Good</SelectItem>
-                  <SelectItem value="fair">Fair</SelectItem>
-                  <SelectItem value="poor">Poor</SelectItem>
+                  <SelectItem value="all">{t('products.allConditions')}</SelectItem>
+                  <SelectItem value="new">{t('products.new')}</SelectItem>
+                  <SelectItem value="like-new">{t('products.likeNew')}</SelectItem>
+                  <SelectItem value="good">{t('products.good')}</SelectItem>
+                  <SelectItem value="fair">{t('products.fair')}</SelectItem>
+                  <SelectItem value="poor">{t('products.poor')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -197,12 +199,12 @@ const Products = () => {
             <div className="flex-1 min-w-[200px]">
               <Select value={selectedType} onValueChange={setSelectedType}>
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder={t('products.type')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="sell">For Sale</SelectItem>
-                  <SelectItem value="exchange">For Exchange</SelectItem>
+                  <SelectItem value="all">{t('products.allTypes')}</SelectItem>
+                  <SelectItem value="sell">{t('products.forSale')}</SelectItem>
+                  <SelectItem value="exchange">{t('products.forExchange')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -210,10 +212,10 @@ const Products = () => {
             <div className="flex-1 min-w-[200px]">
               <Select value={selectedLocation} onValueChange={setSelectedLocation}>
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Location" />
+                  <SelectValue placeholder={t('products.location')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
+                  <SelectItem value="all">{t('products.allLocations')}</SelectItem>
                   {locations.map((location) => (
                     <SelectItem key={location} value={location}>
                       {location}
@@ -225,7 +227,7 @@ const Products = () => {
           </div>
 
           <div className="space-y-3">
-            <label className="text-sm font-medium">Price Range</label>
+            <label className="text-sm font-medium">{t('products.priceRange')}</label>
             <div className="flex gap-2 items-center">
               <div className="flex-1">
                 <div className="relative">
@@ -238,7 +240,7 @@ const Products = () => {
                       setPriceRange([val, priceRange[1]]);
                     }}
                     className="pl-7"
-                    placeholder="Min"
+                    placeholder={t('products.min')}
                   />
                 </div>
               </div>
@@ -255,7 +257,7 @@ const Products = () => {
                       if (val > maxPrice) setMaxPrice(val);
                     }}
                     className="pl-7"
-                    placeholder="Max"
+                    placeholder={t('products.max')}
                   />
                 </div>
               </div>
@@ -274,7 +276,7 @@ const Products = () => {
             {activeFiltersCount > 0 && (
               <Button variant="outline" onClick={clearFilters} className="hover:bg-destructive/10 hover:text-destructive">
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
-                Clear Filters ({activeFiltersCount})
+                {t('products.clearFilters')} ({activeFiltersCount})
               </Button>
             )}
           </div>
@@ -285,7 +287,7 @@ const Products = () => {
           <p className="text-lg font-semibold">
             <span className="text-primary">{filteredProducts.length}</span>{' '}
             <span className="text-muted-foreground">
-              {filteredProducts.length === 1 ? 'item' : 'items'} found
+              {filteredProducts.length === 1 ? t('products.itemFound') : t('products.itemsFound')}
             </span>
           </p>
         </div>
@@ -322,11 +324,11 @@ const Products = () => {
             <div className="w-24 h-24 mx-auto mb-6 rounded-full glass flex items-center justify-center">
               <Search className="w-12 h-12 text-muted-foreground" />
             </div>
-            <p className="text-2xl font-semibold text-foreground mb-2">No products found</p>
-            <p className="text-muted-foreground">Try adjusting your search or filters to find what you're looking for</p>
+            <p className="text-2xl font-semibold text-foreground mb-2">{t('products.noProducts')}</p>
+            <p className="text-muted-foreground">{t('products.tryAdjusting')}</p>
             {activeFiltersCount > 0 && (
               <Button onClick={clearFilters} className="mt-6 gradient-primary shine">
-                Clear All Filters
+                {t('products.clearAllFilters')}
               </Button>
             )}
           </div>

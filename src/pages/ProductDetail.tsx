@@ -416,20 +416,12 @@ const ProductDetail = () => {
                       />
                     )}
                     {user && product && (
-                      <div className="flex gap-2">
-                        <ReportDialog
-                          reportableType="product"
-                          reportableId={product.id}
-                          reportedName={product.title}
-                          userId={user.id}
-                        />
-                        <ReportDialog
-                          reportableType="user"
-                          reportableId={product.seller_id}
-                          reportedName={product.profiles?.full_name || 'this seller'}
-                          userId={user.id}
-                        />
-                      </div>
+                      <ReportDialog
+                        reportableType="product"
+                        reportableId={product.id}
+                        reportedName={product.title}
+                        userId={user.id}
+                      />
                     )}
                   </div>
                 )}

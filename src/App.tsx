@@ -21,6 +21,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminModeration from "./pages/AdminModeration";
 import AdminAnnouncements from "./pages/AdminAnnouncements";
 import AdminAppeals from "./pages/AdminAppeals";
+import AdminReports from "./pages/AdminReports";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +53,8 @@ const App = () => (
               <Route path="/admin/moderation" element={<AdminModeration />} />
               <Route path="/admin/announcements" element={<AdminAnnouncements />} />
               <Route path="/admin/appeals" element={<AdminAppeals />} />
+              <Route path="/admin/reports" element={<AdminReports />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

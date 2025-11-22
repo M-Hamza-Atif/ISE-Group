@@ -1,18 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { adminSignIn } from '@/lib/admin';
+import { adminSignIn, isAdminSession, checkIsAdmin } from '@/lib/admin';
 import { Shield, Lock } from 'lucide-react';
 
 const AdminLogin = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      // If hardcoded admin session exists, redirect to dashboard
+      if (isAdminSession()) {
+        navigate('/admin/dashboard');
+        return;
+      }
+
+      // If user is logged in and is a database admin, redirect to dashboard
+      if (user) {
+        const isUserAdmin = await checkIsAdmin(user.id);
+        if (isUserAdmin) {
+          navigate('/admin/dashboard');
+        }
+      }
+    };
+
+    checkAdmin();
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

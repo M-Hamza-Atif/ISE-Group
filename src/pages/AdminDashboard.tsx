@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { isAdminSession, clearAdminSession } from '@/lib/admin';
+import { isAdminSession, clearAdminSession, checkIsAdmin } from '@/lib/admin';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,20 +33,32 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const verifyAdmin = async () => {
-      // Check admin session first
-      if (!isAdminSession()) {
-        toast.error('Access denied. Please log in as admin.');
-        navigate('/admin/login');
+      // Check if hardcoded admin session exists
+      if (isAdminSession()) {
+        await fetchStats();
+        setLoading(false);
         return;
       }
 
-      // Admin session exists, fetch stats
-      await fetchStats();
-      setLoading(false);
+      // Check if user is a database admin
+      if (user) {
+        const isUserAdmin = await checkIsAdmin(user.id);
+        if (isUserAdmin) {
+          await fetchStats();
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Not authorized
+      toast.error('Access denied. Please log in as admin.');
+      navigate('/admin/login');
     };
 
-    verifyAdmin();
-  }, [navigate]);
+    if (!authLoading) {
+      verifyAdmin();
+    }
+  }, [user, authLoading, navigate]);
 
   const fetchStats = async () => {
     try {
@@ -117,6 +129,14 @@ const AdminDashboard = () => {
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
+                onClick={() => navigate('/admin/analytics')}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Analytics
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={() => navigate('/admin/announcements')}
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
               >
@@ -125,19 +145,11 @@ const AdminDashboard = () => {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/admin/moderation')}
+                onClick={() => navigate('/admin/reports')}
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
               >
                 <Flag className="mr-2 h-4 w-4" />
-                Moderation
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/admin/appeals')}
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              >
-                <Shield className="mr-2 h-4 w-4" />
-                Appeals
+                Reports
               </Button>
               <Button 
                 variant="outline" 

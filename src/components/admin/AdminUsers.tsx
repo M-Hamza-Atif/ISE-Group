@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { isAdminSession } from '@/lib/admin';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -12,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Trash2, Search, Shield, ShieldOff } from 'lucide-react';
+import { Trash2, Search, Shield, ShieldOff, Ban } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +34,7 @@ interface User {
   phone: string | null;
   location: string | null;
   is_admin: boolean;
+  is_banned: boolean;
   created_at: string;
   product_count?: number;
 }
@@ -44,6 +47,7 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
     fetchUsers();
@@ -52,10 +56,10 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Get all profiles - select only columns that definitely exist
+      // Get all profiles including is_admin and is_banned
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, full_name, phone, location, created_at')
+        .select('id, full_name, phone, location, created_at, is_admin, is_banned')
         .order('created_at', { ascending: false });
 
       if (profileError) {
@@ -75,11 +79,12 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
         countsMap[p.seller_id] = (countsMap[p.seller_id] || 0) + 1;
       });
 
-      // Map profiles with product counts and default is_admin to false
+      // Map profiles with product counts
       const usersWithCounts = profiles?.map(p => ({
         ...p,
         product_count: countsMap[p.id] || 0,
-        is_admin: false, // Default to false since column might not exist yet
+        is_admin: p.is_admin || false,
+        is_banned: p.is_banned || false,
         email: undefined,
       })) || [];
 
@@ -111,6 +116,12 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
   };
 
   const handleToggleAdmin = async (userId: string, currentStatus: boolean) => {
+    // Only hardcoded admin can promote/demote admins
+    if (!isAdminSession()) {
+      toast.error('Only the super admin can manage admin roles');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -124,6 +135,52 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
     } catch (error) {
       console.error('Error updating admin status:', error);
       toast.error('Failed to update admin status');
+    }
+  };
+
+  const handleToggleBan = async (userId: string, currentStatus: boolean) => {
+    try {
+      console.log('Toggling ban for user:', userId, 'Current status:', currentStatus, 'New status:', !currentStatus);
+      
+      // If hardcoded admin session, bypass RPC and update directly
+      if (isAdminSession()) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .update({ is_banned: !currentStatus })
+          .eq('id', userId)
+          .select();
+
+        if (error) {
+          console.error('Ban toggle error:', error);
+          throw error;
+        }
+
+        console.log('Ban toggle response:', data);
+        toast.success(`User ${!currentStatus ? 'banned' : 'unbanned'} successfully`);
+        await fetchUsers();
+        onUpdate();
+        return;
+      }
+
+      // Otherwise use RPC function for database admins
+      const { data, error } = await supabase.rpc('toggle_user_ban', {
+        target_user_id: userId,
+        ban_status: !currentStatus
+      });
+
+      if (error) {
+        console.error('Ban toggle error:', error);
+        throw error;
+      }
+
+      console.log('Ban toggle response:', data);
+
+      toast.success(`User ${!currentStatus ? 'banned' : 'unbanned'} successfully`);
+      await fetchUsers();
+      onUpdate();
+    } catch (error: any) {
+      console.error('Error updating ban status:', error);
+      toast.error(error.message || 'Failed to update ban status');
     }
   };
 
@@ -180,6 +237,8 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
                 <TableCell>
                   {user.is_admin ? (
                     <Badge className="bg-red-600">Admin</Badge>
+                  ) : user.is_banned ? (
+                    <Badge variant="destructive">Banned</Badge>
                   ) : (
                     <Badge variant="outline">User</Badge>
                   )}
@@ -189,39 +248,56 @@ const AdminUsers = ({ onUpdate }: AdminUsersProps) => {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleToggleAdmin(user.id, user.is_admin)}
-                    >
-                      {user.is_admin ? (
-                        <ShieldOff className="h-4 w-4" />
-                      ) : (
-                        <Shield className="h-4 w-4" />
-                      )}
-                    </Button>
-                    
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="h-4 w-4" />
+                    {currentUser?.id !== user.id && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleAdmin(user.id, user.is_admin)}
+                          title={user.is_admin ? "Remove Admin" : "Make Admin"}
+                        >
+                          {user.is_admin ? (
+                            <ShieldOff className="h-4 w-4" />
+                          ) : (
+                            <Shield className="h-4 w-4" />
+                          )}
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete User</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete {user.full_name}? This will also delete all their products and cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+
+                        <Button
+                          variant={user.is_banned ? "outline" : "destructive"}
+                          size="sm"
+                          onClick={() => handleToggleBan(user.id, user.is_banned)}
+                          title={user.is_banned ? "Unban User" : "Ban User"}
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete User</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete {user.full_name}? This will also delete all their products and cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
+                    {currentUser?.id === user.id && (
+                      <span className="text-sm text-muted-foreground italic">You</span>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

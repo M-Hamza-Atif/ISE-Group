@@ -1,13 +1,41 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import Products from './Products';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [checkingBan, setCheckingBan] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    const checkBanStatus = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('is_banned')
+          .eq('id', user.id)
+          .single();
+        
+        if (data?.is_banned) {
+          // Sign out the banned user
+          await supabase.auth.signOut();
+          toast.error('Your account has been banned. Please contact support.');
+          navigate('/auth');
+          return;
+        }
+      }
+      setCheckingBan(false);
+    };
+
+    if (!loading) {
+      checkBanStatus();
+    }
+  }, [user, loading, navigate]);
+
+  if (loading || checkingBan) {
     return (
       <div className="flex min-h-screen items-center justify-center gradient-bg relative overflow-hidden">
         {/* Animated background blobs */}

@@ -32,10 +32,8 @@ const AddProduct = () => {
     condition: '',
     transaction_type: 'sell',
     images: [] as string[],
-    stock_amount: '1',
+    stock_amount: 1,
     is_negotiable: false,
-    scheduled_at: '',
-    scheduled_status: '' as 'available' | 'unavailable' | '',
   });
 
   const isEdit = !!id;
@@ -87,10 +85,8 @@ const AddProduct = () => {
       condition: data.condition,
       transaction_type: data.transaction_type,
       images: data.images || [],
-      stock_amount: data.stock_amount?.toString() || '1',
+      stock_amount: data.stock_amount || 1,
       is_negotiable: data.is_negotiable || false,
-      scheduled_at: data.scheduled_at || '',
-      scheduled_status: data.scheduled_status || '',
     });
   };
 
@@ -297,45 +293,6 @@ const AddProduct = () => {
                 <Label htmlFor="is_negotiable" className="font-normal cursor-pointer">
                   Price is negotiable (open to offers)
                 </Label>
-              </div>
-
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Schedule Status Change (Optional)</Label>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Automatically change listing status at a specific date and time
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="scheduled_at">Schedule Date & Time</Label>
-                    <Input
-                      id="scheduled_at"
-                      type="datetime-local"
-                      value={formData.scheduled_at}
-                      onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })}
-                      min={new Date().toISOString().slice(0, 16)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="scheduled_status">Change Status To</Label>
-                    <Select
-                      value={formData.scheduled_status}
-                      onValueChange={(value: 'available' | 'unavailable') => 
-                        setFormData({ ...formData, scheduled_status: value })
-                      }
-                      disabled={!formData.scheduled_at}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="available">Available</SelectItem>
-                        <SelectItem value="unavailable">Unavailable</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
               </div>
 
               <div className="space-y-2">

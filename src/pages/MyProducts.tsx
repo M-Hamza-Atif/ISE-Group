@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Eye, CheckCircle, XCircle, Copy, Ban, Clock, MoreVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, CheckCircle, XCircle, Copy, Clock, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -31,12 +31,17 @@ import {
 interface Product {
   id: string;
   title: string;
+  description: string;
   price: number;
   condition: string;
   images: string[];
   transaction_type: string;
   views: number;
   status: string;
+  category_id: string;
+  location?: string;
+  stock_amount?: number;
+  is_negotiable?: boolean;
   categories: { name: string } | null;
 }
 
@@ -94,24 +99,32 @@ const MyProducts = () => {
   const handleDuplicate = async (product: Product) => {
     if (!user) return;
 
-    const { error } = await supabase
-      .from('products')
-      .insert([{
-        title: `Copy - ${product.title}`,
-        description: product.description,
-        price: product.price,
-        category_id: product.categories ? product.id : null,
-        condition: product.condition,
-        transaction_type: product.transaction_type,
-        images: product.images,
-        seller_id: user.id,
-      }]);
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .insert({
+          title: `${product.title}_1`,
+          description: product.description,
+          price: product.price,
+          category_id: product.category_id,
+          condition: product.condition,
+          transaction_type: product.transaction_type,
+          images: product.images,
+          seller_id: user.id,
+          status: 'available'
+        })
+        .select();
 
-    if (error) {
-      toast.error('Failed to duplicate listing');
-    } else {
-      toast.success('Listing duplicated successfully');
-      fetchMyProducts();
+      if (error) {
+        console.error('Duplicate error:', error);
+        toast.error(`Failed to duplicate listing: ${error.message}`);
+      } else {
+        toast.success('Listing duplicated successfully');
+        fetchMyProducts();
+      }
+    } catch (err) {
+      console.error('Duplicate exception:', err);
+      toast.error('An error occurred while duplicating');
     }
   };
 
@@ -224,7 +237,7 @@ const MyProducts = () => {
                             <DropdownMenuLabel>Change Status</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleStatusChange(product.id, 'unavailable')}>
-                              <Ban className="h-4 w-4 mr-2" />
+                              <XCircle className="h-4 w-4 mr-2" />
                               Mark Unavailable
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusChange(product.id, 'reserved')}>

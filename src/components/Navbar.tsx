@@ -8,26 +8,37 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ShoppingBag, Plus, User, LogOut, Heart, Package, Shield, Moon, Sun, Search, DollarSign, BarChart3, MessageSquare } from 'lucide-react';
+import { ShoppingBag, Plus, User, LogOut, Heart, Package, Shield, Moon, Sun, Search, BarChart3, MessageSquare, Languages } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { signOut } from '@/lib/supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import NotificationsDropdown from '@/components/NotificationsDropdown';
+import { checkIsAdmin } from '@/lib/admin';
 
 const Navbar = () => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchUnreadCount();
       subscribeToMessages();
+      checkAdminStatus();
     }
   }, [user]);
+
+  const checkAdminStatus = async () => {
+    if (!user) return;
+    const adminStatus = await checkIsAdmin(user.id);
+    setIsAdmin(adminStatus);
+  };
 
   const fetchUnreadCount = async () => {
     if (!user) return;
@@ -83,7 +94,7 @@ const Navbar = () => {
           <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all animate-pulse-glow">
             <ShoppingBag className="w-6 h-6" />
           </div>
-          <span className="bg-gradient-to-r from-primary via-purple-600 to-pink-600 bg-clip-text text-transparent animate-shimmer">
+          <span className="bg-gradient-to-r from-primary via-purple-600 to-pink-600 bg-clip-text text-transparent animate-shimmer" style={{ unicodeBidi: 'normal' }}>
             FAST BAZAAR
           </span>
         </Link>
@@ -102,6 +113,32 @@ const Navbar = () => {
             )}
           </Button>
 
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="rounded-full hover:scale-110 transition-transform glass shadow-md"
+              >
+                <Languages className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="glass-card border-2">
+              <DropdownMenuItem 
+                onClick={() => setLanguage('en')}
+                className={language === 'en' ? 'bg-primary/10' : ''}
+              >
+                English
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setLanguage('ur')}
+                className={language === 'ur' ? 'bg-primary/10' : ''}
+              >
+                اردو (Urdu)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {user ? (
             <>
               <NotificationsDropdown />
@@ -109,7 +146,7 @@ const Navbar = () => {
               <Button asChild className="gradient-primary shadow-md hover:shadow-xl transition-all shine hover-lift">
                 <Link to="/products/new">
                   <Plus className="mr-2 h-4 w-4" />
-                  Sell Item
+                  {t('nav.sellItem')}
                 </Link>
               </Button>
 
@@ -123,25 +160,25 @@ const Navbar = () => {
                   <DropdownMenuItem asChild>
                     <Link to="/my-products" className="cursor-pointer">
                       <Package className="mr-2 h-4 w-4" />
-                      My Listings
+                      {t('nav.myListings')}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/favorites" className="cursor-pointer">
                       <Heart className="mr-2 h-4 w-4" />
-                      Favorites
+                      {t('nav.favorites')}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/requests" className="cursor-pointer">
                       <Search className="mr-2 h-4 w-4" />
-                      Item Requests
+                      {t('nav.itemRequests')}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/messages" className="cursor-pointer">
                       <MessageSquare className="mr-2 h-4 w-4" />
-                      Messages
+                      {t('nav.messages')}
                       {unreadCount > 0 && (
                         <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                           {unreadCount > 9 ? '9+' : unreadCount}
@@ -150,34 +187,28 @@ const Navbar = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link to="/transactions" className="cursor-pointer">
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      Transactions
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
                     <Link to="/analytics" className="cursor-pointer">
                       <BarChart3 className="mr-2 h-4 w-4" />
-                      Analytics
+                      {t('nav.analytics')}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="cursor-pointer">
                       <User className="mr-2 h-4 w-4" />
-                      Profile
+                      {t('nav.profile')}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link to="/admin/login" className="cursor-pointer text-orange-600">
+                    <Link to={isAdmin ? "/admin/dashboard" : "/admin/login"} className="cursor-pointer text-orange-600">
                       <Shield className="mr-2 h-4 w-4" />
-                      Admin Portal
+                      {t('nav.adminPortal')}
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
+                    {t('nav.signOut')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -187,11 +218,11 @@ const Navbar = () => {
               <Button variant="ghost" asChild>
                 <Link to="/admin/login" className="text-orange-600">
                   <Shield className="mr-2 h-4 w-4" />
-                  Admin
+                  {t('nav.admin')}
                 </Link>
               </Button>
               <Button asChild className="gradient-primary shadow-md hover:shadow-lg transition-shadow">
-                <Link to="/auth">Sign In</Link>
+                <Link to="/auth">{t('nav.signIn')}</Link>
               </Button>
             </>
           )}

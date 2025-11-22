@@ -41,15 +41,22 @@ const ReportDialog = ({ reportableType, reportableId, reportedName, userId }: Re
 
     setSubmitting(true);
 
+    const insertData: any = {
+      reporter_id: userId,
+      reason,
+      description: description.trim(),
+    };
+
+    // Add the appropriate ID based on reportable type
+    if (reportableType === 'product') {
+      insertData.reported_product_id = reportableId;
+    } else {
+      insertData.reported_user_id = reportableId;
+    }
+
     const { error } = await supabase
       .from('reports')
-      .insert({
-        reportable_type: reportableType,
-        reportable_id: reportableId,
-        reporter_id: userId,
-        reason,
-        description: description.trim(),
-      });
+      .insert(insertData);
 
     setSubmitting(false);
 
