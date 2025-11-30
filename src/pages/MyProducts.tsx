@@ -146,6 +146,7 @@ const MyProducts = () => {
   };
 
   const activeProducts = products.filter(p => p.status === 'available');
+  const reservedProducts = products.filter(p => p.status === 'reserved');
   const soldProducts = products.filter(p => p.status === 'sold');
 
   if (authLoading || loading) {
@@ -178,6 +179,7 @@ const MyProducts = () => {
         <Tabs defaultValue="active" className="w-full">
           <TabsList>
             <TabsTrigger value="active">Active ({activeProducts.length})</TabsTrigger>
+            <TabsTrigger value="reserved">Reserved ({reservedProducts.length})</TabsTrigger>
             <TabsTrigger value="sold">Sold ({soldProducts.length})</TabsTrigger>
           </TabsList>
 
@@ -270,6 +272,81 @@ const MyProducts = () => {
                   <Plus className="mr-2 h-4 w-4" />
                   Create Your First Listing
                 </Button>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="reserved" className="mt-6">
+            {reservedProducts.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {reservedProducts.map((product) => (
+                  <Card key={product.id} className="overflow-hidden glass-card border-yellow-500/50">
+                    <div className="relative aspect-square overflow-hidden bg-muted">
+                      {product.images?.[0] && (
+                        <img src={product.images[0]} alt={product.title} className="object-cover w-full h-full" />
+                      )}
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-yellow-500 text-white">Reserved</Badge>
+                      </div>
+                    </div>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-lg mb-2 line-clamp-2">{product.title}</h3>
+                      <p className="text-2xl font-bold text-primary mb-3">${product.price.toFixed(2)}</p>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                        <Eye className="h-4 w-4" />
+                        <span>{product.views} views</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => navigate(`/products/${product.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => navigate(`/products/${product.id}/edit`)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="default"
+                          onClick={() => handleStatusChange(product.id, 'available')}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Mark Active
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="default"
+                          onClick={() => handleStatusChange(product.id, 'sold')}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Mark Sold
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          onClick={() => setDeleteId(product.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-xl text-muted-foreground">No reserved listings</p>
               </div>
             )}
           </TabsContent>

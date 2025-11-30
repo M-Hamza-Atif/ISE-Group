@@ -41,6 +41,12 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
+      // Sign out current user if logged in
+      if (user) {
+        const { supabase } = await import('@/integrations/supabase/client');
+        await supabase.auth.signOut();
+      }
+      
       await adminSignIn(username, password);
       toast.success('Admin logged in successfully!');
       navigate('/admin/dashboard');

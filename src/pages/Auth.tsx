@@ -203,6 +203,12 @@ const Auth = () => {
         <p className="text-center text-sm text-muted-foreground mt-6">
           🔒 Secure authentication • 🎓 Student-only marketplace
         </p>
+
+        <div className="text-center mt-4">
+          <Button variant="ghost" onClick={() => navigate('/')}>
+            ← Back to Homepage
+          </Button>
+        </div>
       </div>
     </div>
   );
